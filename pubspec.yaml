@@ -39,7 +39,6 @@ dependencies:
   get: ^4.6.6
 
   # Google Services
-  gsheets: ^0.5.0
   googleapis: ^11.4.0
   googleapis_auth: ^1.6.0
   

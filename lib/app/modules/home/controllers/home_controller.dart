@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import '../../../config/app_config.dart';
-import '../../../services/google_auth_service.dart';
-import '../../../services/sheets_service.dart';
+import 'package:kalisabuk_arsip_desa/config/app_config.dart';
+import 'package:kalisabuk_arsip_desa/services/google_auth_service.dart';
+import 'package:kalisabuk_arsip_desa/services/sheets_service.dart';
 
 class HomeController extends GetxController {
   // Services
@@ -39,8 +39,12 @@ class HomeController extends GetxController {
     } catch (e) {
       statusMessage.value = 'Error initializing: $e';
       print(e);
-      Get.snackbar('Error', 'Failed to connect to Google Services. Check Config & Credentials.',
-          backgroundColor: Colors.redAccent, colorText: Colors.white);
+      Get.snackbar(
+        'Error',
+        'Failed to connect to Google Services. Check Config & Credentials.',
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -61,8 +65,13 @@ class HomeController extends GetxController {
 
   // Submit Form
   Future<void> submitArsip() async {
-    if (noSuratC.text.isEmpty || perihalC.text.isEmpty || tanggalC.text.isEmpty) {
-      Get.snackbar('Error', 'Semua field (No Surat, Perihal, Tanggal) harus diisi');
+    if (noSuratC.text.isEmpty ||
+        perihalC.text.isEmpty ||
+        tanggalC.text.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Semua field (No Surat, Perihal, Tanggal) harus diisi',
+      );
       return;
     }
 
@@ -72,20 +81,23 @@ class HomeController extends GetxController {
     }
 
     // Check config
-    if (AppConfig.spreadsheetId == 'YOUR_SPREADSHEET_ID_HERE' || 
+    if (AppConfig.spreadsheetId == 'YOUR_SPREADSHEET_ID_HERE' ||
         AppConfig.driveFolderId == 'YOUR_DRIVE_FOLDER_ID_HERE') {
-      Get.snackbar('Config Error', 'Harap update AppConfig dengan ID yang benar!');
+      Get.snackbar(
+        'Config Error',
+        'Harap update AppConfig dengan ID yang benar!',
+      );
       return;
     }
 
     try {
       isLoading.value = true;
-      
+
       // 1. Upload to Drive
       statusMessage.value = 'Uploading to Drive...';
       final driveLink = await _authService.uploadToDrive(
-        selectedImage.value!, 
-        folderId: AppConfig.driveFolderId
+        selectedImage.value!,
+        folderId: AppConfig.driveFolderId,
       );
 
       if (driveLink == null) {
@@ -102,16 +114,23 @@ class HomeController extends GetxController {
       });
 
       if (success) {
-        Get.snackbar('Success', 'Data berhasil diawetan!',
-            backgroundColor: Colors.green, colorText: Colors.white);
+        Get.snackbar(
+          'Success',
+          'Data berhasil diawetan!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
         _resetForm();
       } else {
         throw Exception('Gagal menyimpan ke Google Sheets');
       }
-
     } catch (e) {
-      Get.snackbar('Error', 'Terjadi kesalahan: $e',
-          backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        'Error',
+        'Terjadi kesalahan: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       print(e);
     } finally {
       isLoading.value = false;

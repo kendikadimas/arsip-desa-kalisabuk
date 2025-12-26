@@ -184,14 +184,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
-  gsheets:
-    dependency: "direct main"
-    description:
-      name: gsheets
-      sha256: "5730f2585d9df565f1cf54d8c26a3608c2586c5e1797932cb4484d5f1262e85b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.5.0"
   http:
     dependency: transitive
     description:
