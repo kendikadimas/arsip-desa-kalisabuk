@@ -19,7 +19,7 @@ class GoogleAuthService {
 
   // Getter for the authenticated client to be used by GSheets
   AutoRefreshingAuthClient? get client => _client;
-  
+
   // Getter for raw credentials JSON string (for gsheets library)
   String? get credentialsJson => _credentialsJson;
 
@@ -28,19 +28,38 @@ class GoogleAuthService {
     try {
       // Load credentials from assets
       print('Loading assets/credentials.json...');
-      _credentialsJson = await rootBundle.loadString(
-        'assets/credentials.json',
-      );
+      _credentialsJson = await rootBundle.loadString('assets/credentials.json');
       print('Loaded credentialsJson length: ${_credentialsJson!.length}');
       print(
         'First 100 chars: ${_credentialsJson!.substring(0, _credentialsJson!.length > 100 ? 100 : _credentialsJson!.length)}',
       );
 
-      final Map<String, dynamic> decodedJson = jsonDecode(_credentialsJson!) as Map<String, dynamic>;
+      print('Raw content length: ${_credentialsJson!.length}');
 
-      final accountCredentials = ServiceAccountCredentials.fromJson(
-        decodedJson,
+      // 1. Sanitize: Remove BOM if present (often causes issues on mobile)
+      if (_credentialsJson!.isNotEmpty &&
+          _credentialsJson!.codeUnitAt(0) == 0xFEFF) {
+        print('Detected BOM, removing it...');
+        _credentialsJson = _credentialsJson!.substring(1);
+      }
+
+      // 2. Explicit Decode to inspect structure
+      final dynamic decoded = jsonDecode(_credentialsJson!);
+      print('Decoded type: ${decoded.runtimeType}');
+
+      if (decoded is! Map) {
+        throw Exception(
+          'JSON content is not a Map, it is: ${decoded.runtimeType}',
+        );
+      }
+
+      // 3. Cast to Map<String, dynamic> explicitly to satisfy strict typing
+      final Map<String, dynamic> credsMap = Map<String, dynamic>.from(
+        decoded as Map,
       );
+
+      // 4. Pass the Map (not string) to fromJson
+      final accountCredentials = ServiceAccountCredentials.fromJson(credsMap);
 
       // Create authenticated client
       _client = await clientViaServiceAccount(accountCredentials, _scopes);
@@ -49,8 +68,9 @@ class GoogleAuthService {
       _driveApi = drive.DriveApi(_client!);
 
       print('Google Auth Service Initialized Successfully');
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error initializing Google Auth Service: $e');
+      print('Stack trace: $stackTrace');
       rethrow;
     }
   }

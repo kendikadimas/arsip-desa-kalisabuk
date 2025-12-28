@@ -1,77 +1,97 @@
-import 'package:googleapis/sheets/v4.dart' as sheets;
+import 'package:gsheets/gsheets.dart';
 import 'google_auth_service.dart';
 
 class SheetsService {
   final GoogleAuthService _authService;
-  sheets.SheetsApi? _sheetsApi;
-  String? _spreadsheetId;
+  GSheets? _gsheets;
+  Spreadsheet? _spreadsheet;
 
   // Constructor requires an instance of Auth Service
   SheetsService(this._authService);
 
-  /// Initialize Sheets API with the authenticated client
+  /// Initialize GSheets with the same client from AuthService
   Future<void> init(String spreadsheetId) async {
-    if (_authService.client == null) {
+    // Ensure Auth Service is initialized
+    if (_authService.client == null || _authService.credentialsJson == null) {
       throw Exception('Google Auth Service not initialized');
     }
 
-    _spreadsheetId = spreadsheetId;
-    _sheetsApi = sheets.SheetsApi(_authService.client!);
-    
-    // Verify spreadsheet exists and is accessible
+    // Initialize GSheets with the credentials JSON string
+    // IMPORTANT: GSheets constructor expects credentials (String or Map), usually not the Client object directly
+    _gsheets = GSheets(_authService.credentialsJson);
+
+    // Open the spreadsheet by ID
+    _spreadsheet = await _gsheets!.spreadsheet(spreadsheetId);
+  }
+
+  /// Get or Create a Worksheet
+  Future<Worksheet> _getWorksheet(String title, List<String> headers) async {
+    if (_spreadsheet == null) throw Exception('Spreadsheet not initialized');
+
+    var sheet = _spreadsheet!.worksheetByTitle(title);
+    if (sheet == null) {
+      // Create new worksheet if not exists
+      sheet = await _spreadsheet!.addWorksheet(title);
+      // Add standard headers (No + [Custom Fields] + Link Foto)
+      final allHeaders = ['No', ...headers, 'Link Foto'];
+      await sheet!.values.insertRow(1, allHeaders);
+    }
+    return sheet;
+  }
+
+  /// Insert a new row of data dynamically
+  /// [sheetTitle]: Target tab name
+  /// [headers]: The list of field names defined in configuration
+  /// [data]: Map of data where keys match headers
+  Future<bool> insertArsip(
+    String sheetTitle,
+    List<String> headers,
+    Map<String, dynamic> data,
+  ) async {
     try {
-      await _sheetsApi!.spreadsheets.get(spreadsheetId);
-      print('Successfully connected to spreadsheet');
+      final sheet = await _getWorksheet(sheetTitle, headers);
+
+      // Get current row count to generate auto-increment No
+      final lastRow = await sheet.values.lastRow();
+      final newNo = (lastRow == null || lastRow.isEmpty || lastRow[0] == 'No')
+          ? 1
+          : int.parse(lastRow[0]) + 1;
+
+      // Prepare row data dynamically in order of keys
+      // 1. 'No' column
+      final List<dynamic> row = [newNo];
+
+      // 2. Custom Fields
+      for (var header in headers) {
+        row.add(data[header] ?? '-');
+      }
+
+      // 3. 'Link Foto' column
+      row.add(data['Link Foto'] ?? '-');
+
+      return await sheet.values.appendRow(row);
     } catch (e) {
-      print('Error accessing spreadsheet: $e');
-      rethrow;
+      print('Error inserting to Sheets ($sheetTitle): $e');
+      return false;
     }
   }
 
-  /// Insert a new row of data to the DataArsip sheet
-  /// [data] expected keys: 'noSurat', 'perihal', 'tanggal', 'linkFoto'
-  Future<bool> insertArsip(Map<String, dynamic> data) async {
-    if (_sheetsApi == null || _spreadsheetId == null) {
-      throw Exception('Sheets Service not initialized');
-    }
-
+  /// Fetch all rows from a specific sheet
+  /// Returns a list of Maps, where keys are the headers
+  Future<List<Map<String, String>>> fetchArsip(String sheetTitle) async {
     try {
-      const sheetName = 'DataArsip';
-      
-      // Get current values to determine next row number
-      final response = await _sheetsApi!.spreadsheets.values.get(
-        _spreadsheetId!,
-        '$sheetName!A:A',
-      );
-      
-      final currentRows = response.values?.length ?? 0;
-      final newNo = currentRows; // Will be row 1 if header exists, or 0 if empty
-      
-      // Prepare row data: No, Nomor Surat, Perihal, Tanggal, Link Foto
-      final row = [
-        newNo,
-        data['noSurat'] ?? '-',
-        data['perihal'] ?? '-',
-        data['tanggal'] ?? '-',
-        data['linkFoto'] ?? '-',
-      ];
+      if (_spreadsheet == null) throw Exception('Spreadsheet not initialized');
 
-      final valueRange = sheets.ValueRange.fromJson({
-        'values': [row],
-      });
+      var sheet = _spreadsheet!.worksheetByTitle(sheetTitle);
+      if (sheet == null) {
+        return []; // Sheet doesn't exist yet, return empty
+      }
 
-      await _sheetsApi!.spreadsheets.values.append(
-        valueRange,
-        _spreadsheetId!,
-        '$sheetName!A:E',
-        valueInputOption: 'RAW',
-      );
-      
-      print('Row inserted successfully');
-      return true;
+      final rows = await sheet.values.map.allRows();
+      return rows ?? [];
     } catch (e) {
-      print('Error inserting to Sheets: $e');
-      return false;
+      print('Error fetching from Sheets ($sheetTitle): $e');
+      return [];
     }
   }
 }

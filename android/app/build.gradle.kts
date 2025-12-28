@@ -28,7 +28,7 @@ android {
         // STOP! DO NOT CHANGE THIS!
         // MinSdk 21 is REQUIRED for Google Services to work. 
         // If you revert this to 'flutter.minSdkVersion', the app will CRASH.
-        minSdk = flutter.minSdkVersion
+        minSdk = 21
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

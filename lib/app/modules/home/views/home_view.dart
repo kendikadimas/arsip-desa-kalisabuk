@@ -1,195 +1,138 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:kalisabuk_arsip_desa/app/data/menu_config.dart';
 import '../controllers/home_controller.dart';
-import 'package:image_picker/image_picker.dart';
+
+import 'arsip_list_view.dart';
+
+import 'global_search_delegate.dart';
 
 class HomeView extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
-    // Inject Controller
     Get.put(HomeController());
 
     return Scaffold(
-      appBar: AppBar(title: Text('Input Arsip Desa'), centerTitle: true),
-      body: Obx(() {
-        // Loading Overlay
-        return Stack(
-          children: [
-            SingleChildScrollView(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Status Init Check
-                  if (controller.statusMessage.value.isNotEmpty &&
-                      !controller.isLoading.value)
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      color: Colors.amber.withOpacity(0.2),
-                      child: Text(controller.statusMessage.value),
-                    ),
-
-                  SizedBox(height: 10),
-
-                  // Form Fields
-                  TextField(
-                    controller: controller.noSuratC,
-                    decoration: InputDecoration(
-                      labelText: 'Nomor Surat',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.numbers),
-                    ),
-                  ),
-                  SizedBox(height: 15),
-
-                  TextField(
-                    controller: controller.perihalC,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Perihal / Keterangan',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.description),
-                    ),
-                  ),
-                  SizedBox(height: 15),
-
-                  TextField(
-                    controller: controller.tanggalC,
-                    readOnly: true,
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (date != null) {
-                        controller.setDate(date);
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Tanggal Surat',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.calendar_today),
-                      suffixIcon: Icon(Icons.arrow_drop_down),
-                    ),
-                  ),
-
-                  SizedBox(height: 25),
-
-                  // Image Picker Section
-                  Text(
-                    'Foto Dokumen:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () => _showPicker(context),
-                    child: Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.grey[100],
-                      ),
-                      child: controller.selectedImage.value == null
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.camera_alt,
-                                  size: 50,
-                                  color: Colors.grey,
-                                ),
-                                Text('Tap untuk ambil/pilih foto'),
-                              ],
-                            )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.file(
-                                controller.selectedImage.value!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                              ),
-                            ),
-                    ),
-                  ),
-
-                  SizedBox(height: 30),
-
-                  // Submit Button
-                  ElevatedButton.icon(
-                    onPressed: controller.isLoading.value
-                        ? null
-                        : () => controller.submitArsip(),
-                    icon: Icon(Icons.cloud_upload),
-                    label: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      child: Text(
-                        'SIMPAN ARSIP',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[800],
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Loading Indicator
-            if (controller.isLoading.value)
-              Container(
-                color: Colors.black45,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 20),
-                      Text(
-                        controller.statusMessage.value,
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ],
-                  ),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: Text('Sistem Arsip Desa'),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search),
+            onPressed: () {
+              showSearch(context: context, delegate: GlobalSearchDelegate());
+            },
+          ),
+          SizedBox(width: 10),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(),
+              SizedBox(height: 30),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: MenuConfig.mainMenus.length,
+                  separatorBuilder: (ctx, i) => SizedBox(height: 20),
+                  itemBuilder: (context, index) {
+                    final menu = MenuConfig.mainMenus[index];
+                    return _buildLargeCard(menu);
+                  },
                 ),
-              ),
-          ],
-        );
-      }),
-    );
-  }
-
-  void _showPicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext bc) {
-        return SafeArea(
-          child: Wrap(
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Galeri'),
-                onTap: () {
-                  controller.pickImage(ImageSource.gallery);
-                  Navigator.of(context).pop();
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.photo_camera),
-                title: Text('Kamera'),
-                onTap: () {
-                  controller.pickImage(ImageSource.camera);
-                  Navigator.of(context).pop();
-                },
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
+
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        Icon(Icons.archive_outlined, size: 60, color: Colors.blue[900]),
+        SizedBox(height: 10),
+        Text(
+          'Kalisabuk Arsip',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue[900],
+          ),
+        ),
+        Text(
+          'Pilih kategori arsip untuk dikelola',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLargeCard(MenuItem menu) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: InkWell(
+        onTap: () => Get.to(() => ArsipListView(menuItem: menu)),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: EdgeInsets.all(25),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                menu.color,
+                menu.color.withOpacity(0.8),
+              ],
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(menu.icon, size: 40, color: Colors.white),
+              ),
+              SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      menu.title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      'Kelola data ${menu.title.toLowerCase()}',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.white70),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 }
