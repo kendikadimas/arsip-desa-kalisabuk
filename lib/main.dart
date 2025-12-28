@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'app/modules/home/views/home_view.dart';
+import 'app/theme/app_theme.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,11 +13,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'Arsip Desa',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      title: 'Kalisabuk Arsip',
+      theme: AppTheme.lightTheme,
       home: HomeView(),
       debugShowCheckedModeBanner: false,
     );
