@@ -9,7 +9,7 @@ import 'package:kalisabuk_arsip_desa/services/sheets_service.dart';
 import 'package:kalisabuk_arsip_desa/app/data/menu_config.dart';
 
 import 'package:kalisabuk_arsip_desa/app/data/menu_config.dart';
-import 'package:cunning_document_scanner/cunning_document_scanner.dart';
+import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 
 class SearchResult {
   final Map<String, String> data;
@@ -124,18 +124,32 @@ class HomeController extends GetxController {
   // Pick Image
   Future<void> pickImage(ImageSource source) async {
     if (source == ImageSource.camera) {
-      // Use Document Scanner for Camera
+      // Use Google ML Kit Document Scanner
       try {
-        List<String> pictures =
-            await CunningDocumentScanner.getPictures() ?? [];
-        if (pictures.isNotEmpty) {
-          selectedImage.value = File(pictures.first);
+        final options = DocumentScannerOptions(
+          mode: ScannerMode.full, // Full scanner UI
+          isGalleryImport: true, // Allow importing from gallery inside scanner
+          pageLimit: 1, // Limit to 1 page for now
+        );
+
+        final scanner = DocumentScanner(options: options);
+        final result = await scanner.scanDocument();
+
+        // Handle result
+        if (result.images.isNotEmpty) {
+          // Result gives us absolute paths
+          selectedImage.value = File(result.images.first);
         }
       } catch (e) {
-        Get.snackbar('Error', 'Gagal scan dokumen: $e');
+        // If user cancels, it throws an error or just returns empty depending on plugin version.
+        // Usually cancellation isn't an 'error' to show, but actual failures are.
+        print('Scanner Error or Cancel: $e');
+        if (!e.toString().contains('canceled')) {
+          Get.snackbar('Error', 'Gagal scan dokumen: $e');
+        }
       }
     } else {
-      // Use Standard Gallery Picker
+      // Use Standard Gallery Picker via ImagePicker
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: source);
 
@@ -202,14 +216,39 @@ class HomeController extends GetxController {
       } else {
         throw Exception('Gagal menyimpan ke Google Sheets');
       }
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+    } catch (e, stack) {
+      // Show Detailed Error Dialog
+      Get.defaultDialog(
+        title: 'Upload Failed',
+        titleStyle: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        content: Container(
+          height: 300,
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Error Message:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SelectableText(e.toString()),
+                Divider(),
+                Text(
+                  'Stack Trace:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SelectableText(stack.toString()),
+              ],
+            ),
+          ),
+        ),
+        textConfirm: 'Tutup',
+        confirmTextColor: Colors.white,
+        onConfirm: () => Get.back(),
       );
       print(e);
+      print(stack);
     } finally {
       isLoading.value = false;
       statusMessage.value = '';

@@ -90,10 +90,7 @@ class HomeView extends GetView<HomeController> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                menu.color,
-                menu.color.withOpacity(0.8),
-              ],
+              colors: [menu.color, menu.color.withOpacity(0.8)],
             ),
           ),
           child: Row(
@@ -134,5 +131,4 @@ class HomeView extends GetView<HomeController> {
       ),
     );
   }
-}
 }
